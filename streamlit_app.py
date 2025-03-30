@@ -1,52 +1,55 @@
 # Import python packages
 import streamlit as st
+from snowflake.snowpark import Session
 from snowflake.snowpark.functions import col
-
-helpful_links = [
-    "https://docs.streamlit.io",
-    "https://docs.snowflake.com/en/developer-guide/streamlit/about-streamlit",
-    "https://github.com/Snowflake-Labs/snowflake-demo-streamlit",
-    "https://docs.snowflake.com/en/release-notes/streamlit-in-snowflake"
-]
+import pandas as pd
 
 # Write directly to the app
 st.title("Example Streamlit App :balloon:")
 st.write("Replace the code in this example app with your own code! And if you're new to Streamlit, here are some helpful links:")
 
+# Get secrets from Streamlit Cloud Secrets
+conn_info = st.secrets["connections"]["snowflake"]
+
+# Establish Snowpark Session
+session = Session.builder.configs(conn_info).create()
+
+# Load fruit options from Snowflake
+my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME')).to_pandas()
+fruit_options = my_dataframe['FRUIT_NAME'].tolist()  # Convert to a list
+
 name_on_order = st.text_input('Name on Smoothie:')
 st.write('The name on your Smoothie will be:', name_on_order)
 
-cnx = st.connection("snowflake")
-session = cnx.session()
-my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
-# st.dataframe(data=my_dataframe, use_container_width=True)
-
+# Display fruit options for selection
 ingredients_list = st.multiselect(
-    'Choose up to 5 ingredients:'
-    , my_dataframe
-    ,max_selections=5
-    )
+    'Choose up to 5 ingredients:', 
+    fruit_options, 
+    max_selections=5
+)
 
 if ingredients_list:
-    st.write(ingredients_list)
-    st.text(ingredients_list)
+    st.write("Ingredients Selected:", ingredients_list)
 
-    ingredients_string = ''
+    # Convert selected ingredients to a comma-separated string
+    ingredients_string = ', '.join(ingredients_list)
 
-    for fruit_chosen in ingredients_list:
-        ingredients_string += fruit_chosen
-
-    # st.write(ingredients_string)
-
-    my_insert_stmt = """ insert into smoothies.public.orders(ingredients)
-            values ('""" + ingredients_string + """','"""+name_on_order+"""')"""
-
-    st.write(my_insert_stmt)
-    st.stop()
-
-    time_to_insert = st.button('Submit Order')
-
-    if time_to_insert:
-        session.sql(my_insert_stmt).collect()
+    # Prepare the SQL Insert Statement
+    my_insert_stmt = f"""
+    INSERT INTO smoothies.public.orders (ingredients, name_on_order)
+    VALUES ('{ingredients_string}', '{name_on_order}')
+    """
     
-    st.success('Your Smoothie is ordered!', icon="✅")
+    st.write(my_insert_stmt)
+    
+    time_to_insert = st.button('Submit Order')
+    
+    if time_to_insert:
+        try:
+            session.sql(my_insert_stmt).collect()
+            st.success('Your Smoothie is ordered!', icon="✅")
+        except Exception as e:
+            st.error(f"Failed to insert order: {e}")
+
+# Close Snowflake session
+session.close()

@@ -12,7 +12,7 @@ name_on_order = st.text_input('Name on Smoothie:')
 st.write('The name on your Smoothie will be:', name_on_order)
 
 cnx = snowflake.connector.connect(
-    user='hollingworthsam',
+    user='hollingworthsam2000',
     password='Westend11Danielle30',
     account='EODBGZC-KRB90497',
     warehouse='COMPUTE_WH',

@@ -13,11 +13,8 @@ st.write('The name on your Smoothie will be:', name_on_order)
 
 cnx = snowflake.connector.connect(
     user='HOLLINGWORTHSAM2000',
-    password='Westend11Danielle30',
     account='EODBGZC-KRB90497',
-    warehouse='COMPUTE_WH',
-    database='SMOOTHIES',
-    schema='PUBLIC'
+    authenticator='externalbrowser'
 )
 session = cnx.session()
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
